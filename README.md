@@ -186,4 +186,4 @@ http://localhost:5173
 
 ## License
 
-MIT
+[MIT](LICENSE) © 2025 [Anubothu Aravind](https://github.com/Anubothu-Aravind)
