@@ -25,39 +25,40 @@ function calculateSimilarity(features1, features2) {
 // Register new user
 router.post("/register", async (req, res) => {
   try {
-    const { username, imageData, features } = req.body;
+    const { username, imageData, features, email } = req.body;
 
-    // Validate input
-    if (!username || !imageData || !features) {
-      return res
-        .status(400)
-        .json({ error: "Username, image data, and features are required" });
+    console.log("Register payload:", { username, email, imageDataType: typeof imageData, featuresType: typeof features });
+
+    if (!username || !imageData || !features || !Array.isArray(features)) {
+      return res.status(400).json({ error: "Username, imageData, and valid features array are required" });
     }
 
-    // Check if user already exists
+    if (!features.every((val) => typeof val === "number")) {
+      return res.status(400).json({ error: "All features must be numbers" });
+    }
+
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({ error: "Username already exists" });
     }
 
-    // Save user data
-    const newUser = new User({
-      username,
-      imageData,
-      features,
-    });
+    if (email) {
+      const emailExists = await User.findOne({ email });
+      if (emailExists) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+    }
 
+    const newUser = new User({ username, email, imageData, features });
     await newUser.save();
 
-    res.status(201).json({
-      message: "User registered successfully",
-      username: newUser.username,
-    });
+    res.status(201).json({ message: "User registered successfully", username });
   } catch (error) {
     console.error("Registration error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 });
+
 
 // Login user
 router.post("/login", async (req, res) => {

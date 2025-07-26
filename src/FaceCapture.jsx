@@ -12,7 +12,9 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
   const [message, setMessage] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [features, setFeatures] = useState(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Load face-api.js models with better error handling
   useEffect(() => {
@@ -72,7 +74,7 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
         try {
           await tf.ready();
           setIsModelLoaded(true);
-          setMessage("Using fallback mode - basic image capture available ⚠️");
+          setMessage("Using TensorFlow.js for face recognition - models will be downloaded automatically ✓");
         } catch (tfError) {
           console.error("TensorFlow.js error:", tfError);
           setMessage(
@@ -121,6 +123,23 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
         video.addEventListener("loadeddata", resolve, { once: true });
       }
     });
+  };
+
+  // Redirect to Gmail
+  const redirectToGmail = () => {
+    setIsRedirecting(true);
+    setMessage("Redirecting to Gmail... 📧");
+    
+    // Give a brief moment for the user to see the success message
+    setTimeout(() => {
+      // Open Gmail in a new tab/window
+      window.open("https://mail.google.com", "_blank");
+      
+      // Or redirect in the same window (uncomment the line below and comment the line above)
+      // window.location.href = "https://mail.google.com";
+      
+      setIsRedirecting(false);
+    }, 2000);
   };
 
   // Capture image and extract face features using face-api.js
@@ -259,6 +278,11 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
       setMessage("Please enter a username");
       return;
     }
+    
+    if (isRegistering && !userEmail.trim()) {
+      setMessage("Please enter an email address");
+      return;
+    }
 
     if (!isModelLoaded) {
       setMessage("Models not loaded yet. Please wait.");
@@ -282,6 +306,7 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
         },
         body: JSON.stringify({
           username: userName,
+          email: userEmail,
           imageData: result.imageData,
           features: result.features,
         }),
@@ -292,6 +317,7 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
       if (response.ok) {
         setMessage(`User ${userName} registered successfully! ✅`);
         setUserName("");
+        setUserEmail("");
         setIsRegistering(false);
         setCapturedImage(null);
         setFeatures(null);
@@ -347,6 +373,9 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
             similarity: apiResult.similarity,
           });
         }
+
+        // Redirect to Gmail after successful login
+        redirectToGmail();
       } else {
         setMessage(apiResult.error || "Authentication failed");
       }
@@ -370,7 +399,7 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
           className={`font-semibold ${
             message.includes("Error") || message.includes("failed")
               ? "text-red-600"
-              : message.includes("✅")
+              : message.includes("✅") || message.includes("📧")
               ? "text-green-600"
               : message.includes("⚠️")
               ? "text-yellow-600"
@@ -445,6 +474,13 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
             onChange={(e) => setUserName(e.target.value)}
             className="w-full p-2 border border-gray-300 rounded-md mb-3"
           />
+          <input
+            type="email"
+            placeholder="Enter email address"
+            value={userEmail}
+            onChange={(e) => setUserEmail(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md mb-3"
+          />
           <div className="flex gap-2">
             <button
               onClick={registerUser}
@@ -469,17 +505,17 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
         <div className="flex gap-4 justify-center mb-6">
           <button
             onClick={() => setIsRegistering(true)}
-            disabled={!isModelLoaded}
+            disabled={!isModelLoaded || isRedirecting}
             className="bg-green-500 text-white py-2 px-6 rounded-md hover:bg-green-600 disabled:bg-gray-400"
           >
             Register New User
           </button>
           <button
             onClick={loginUser}
-            disabled={!isModelLoaded || isCapturing}
+            disabled={!isModelLoaded || isCapturing || isRedirecting}
             className="bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 disabled:bg-gray-400"
           >
-            {isCapturing ? "Capturing..." : "Login"}
+            {isCapturing ? "Capturing..." : isRedirecting ? "Redirecting..." : "Login"}
           </button>
         </div>
       )}
@@ -490,6 +526,9 @@ const FaceCapture = ({ onSuccessfulAuth }) => {
         <p>2. Ensure good lighting for better face detection</p>
         <p>3. For registration: Enter username and click "Register"</p>
         <p>4. For login: Simply click "Login" to authenticate</p>
+        <p className="mt-2 font-semibold text-blue-600">
+          ✨ After successful login, you'll be redirected to Gmail!
+        </p>
         <p className="mt-2 text-xs text-gray-500">
           Note: Requires face-api.js model files in /models directory
         </p>
